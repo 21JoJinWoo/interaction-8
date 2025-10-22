@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wheel Scroll</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbit&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #start-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            cursor: pointer;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #start-popup h1 {
+            color: white;
+            font-size: 2.5rem;
+            text-align: center;
+            font-family: "Orbit", sans-serif;
+            font-weight: 400;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        #background-image {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.1s ease-out;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #wheel-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        #speed-display {
+            color: white;
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            min-width: 200px;
+            text-align: center;
+            font-family: "Orbit", sans-serif;
+        }
+
+        #wheel {
+            max-width: 300px;
+            user-select: none;
+            -webkit-user-drag: none;
+            position: relative;
+            z-index: 12;
+        }
+        
+        #smoke-container-back,
+        #smoke-container-front,
+        #wind-effect-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #smoke-container-back { z-index: 5; }
+        #smoke-container-front { z-index: 15; }
+        #wind-effect-container { z-index: 8; }
+
+
+        .smoke-particle, .wind-line {
+            position: absolute;
+            will-change: transform, opacity;
+            transform: scale(0);
+        }
+
+        .smoke-particle {
+            border-radius: 50%;
+        }
+
+        .wind-line {
+            background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+            height: 2px;
+        }
+
+        .hidden { display: none; }
+
+        #controls-container {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 120;
+            background-color: rgba(40, 40, 40, 0.6);
+            border-radius: 10px;
+            padding: 8px 12px;
+            backdrop-filter: blur(5px);
+            font-family: "Orbit", sans-serif;
+        }
+        #controls-container .control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 0.9rem;
+            font-family: "Orbit", sans-serif;
+            white-space: nowrap;
+        }
+        #controls-container input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 160px; height: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px; outline: none; cursor: pointer;
+        }
+        #controls-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 14px; height: 14px;
+            background: white; border-radius: 50%;
+        }
+        #controls-container input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px; background: white; border-radius: 50%; border: none;
+        }
+
+        #wheel-selector {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 120;
+            background-color: rgba(40, 40, 40, 0.6);
+            border-radius: 10px;
+            padding: 8px 12px;
+            backdrop-filter: blur(5px);
+        }
+        #wheel-selector img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            transition: transform 0.15s ease;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        #wheel-selector img:hover {
+            transform: scale(1.3);
+        }
+
+        #co2-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 1.2rem;
+            font-family: "Orbit", sans-serif;
+            background-color: rgba(40, 40, 40, 0.6);
+            border-radius: 10px;
+            padding: 12px 16px;
+            backdrop-filter: blur(5px);
+            z-index: 120;
+        }
+        #co2-display .label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+        #co2-display .value {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .confetti-particle {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            pointer-events: none;
+            z-index: 200;
+        }
+        .confetti-particle::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3);
+            border-radius: 2px;
+            transform: rotate(var(--rotation, 0deg));
+        }
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        #track-map-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 250px;
+            height: 280px;
+            background-color: rgba(40, 40, 40, 0.6);
+            border-radius: 10px;
+            padding: 10px;
+            backdrop-filter: blur(5px);
+            z-index: 120;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        #track-canvas {
+            width: 100%;
+            height: 230px;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        #lap-counter {
+            color: white;
+            font-family: "Orbit", sans-serif;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="start-popup">
+    <h1>음악과 함께 최고의 속도감을 즐겨보세요.</h1>
+</div>
+
+<img id="background-image" src="1.jpg" alt="Background Image">
+
+<div id="smoke-container-back"></div>
+<div id="wind-effect-container"></div>
+<div id="wheel-container">
+    <div id="speed-display">0 km/h</div>
+    <img id="wheel" src="wheel.png" alt="Spinning Wheel">
+</div>
+<div id="smoke-container-front"></div>
+<audio id="background-music" loop src="wheel.mp3"></audio>
+<div id="controls-container">
+    <div class="control">
+        <label for="smoke-wind-slider">연기 바람</label>
+        <input id="smoke-wind-slider" type="range" min="-100" max="100" step="1" value="100">
+    </div>
+    <div class="control">
+        <label for="line-wind-slider">유체 바람</label>
+        <input id="line-wind-slider" type="range" min="-100" max="100" step="1" value="100">
+    </div>
+</div>
+
+<div id="wheel-selector">
+    <img src="wheel.png" alt="Wheel 1" data-wheel-src="wheel.png">
+    <img src="wheel_2.png" alt="Wheel 2" data-wheel-src="wheel_2.png">
+    <img src="wheel_3.png" alt="Wheel 3" data-wheel-src="wheel_3.png">
+    <img src="wheel_4.png" alt="Wheel 4" data-wheel-src="wheel_4.png">
+</div>
+
+<div id="co2-display">
+    <div class="label">이산화 탄소 배출량</div>
+    <div class="value" id="co2-value">0g</div>
+</div>
+
+<div id="track-map-container">
+    <canvas id="track-canvas"></canvas>
+    <div id="lap-counter"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const wheel = document.getElementById('wheel');
+        const speedDisplay = document.getElementById('speed-display');
+        const smokeContainerBack = document.getElementById('smoke-container-back');
+        const smokeContainerFront = document.getElementById('smoke-container-front');
+        const windEffectContainer = document.getElementById('wind-effect-container');
+        const backgroundImage = document.getElementById('background-image');
+        const music = document.getElementById('background-music');
+        const startPopup = document.getElementById('start-popup');
+        const smokeWindSlider = document.getElementById('smoke-wind-slider');
+        const lineWindSlider = document.getElementById('line-wind-slider');
+        const wheelSelector = document.getElementById('wheel-selector');
+        const co2Display = document.getElementById('co2-value');
+        const lapCounter = document.getElementById('lap-counter');
+
+        const imageList = ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg', '10.jpg'];
+        let imageQueue = [];
+        let queueIndex = 0;
+        let hasSwappedAtZero = false;
+
+        function buildQueue(prevSrc) {
+            imageQueue = imageList.slice();
+            for (let i = imageQueue.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [imageQueue[i], imageQueue[j]] = [imageQueue[j], imageQueue[i]];
+            }
+            if (imageQueue.length > 1 && imageQueue[0] === prevSrc) {
+                [imageQueue[0], imageQueue[1]] = [imageQueue[1], imageQueue[0]];
+            }
+            queueIndex = 0;
+        }
+
+        function nextImage() {
+            if (queueIndex >= imageQueue.length) {
+                const current = backgroundImage.getAttribute('src') || '1.jpg';
+                buildQueue(current);
+            }
+            const next = imageQueue[queueIndex++];
+            backgroundImage.src = next;
+        }
+
+        buildQueue(backgroundImage.getAttribute('src') || '1.jpg');
+
+        startPopup.addEventListener('click', () => {
+            startPopup.style.opacity = '0';
+            setTimeout(() => {
+                startPopup.style.display = 'none';
+            }, 500);
+            const playPromise = music.play();
+            if (playPromise && typeof playPromise.then === 'function') {
+                playPromise.catch(() => {});
+            }
+        }, { once: true });
+
+        const MAX_SMOKE_PARTICLES = 300;
+        const MAX_WIND_LINES = 80;
+        const smokeParticlePool = [];
+        const windLinePool = [];
+        let nextSmokeIndex = 0;
+        let nextWindLineIndex = 0;
+
+        function setupPools() {
+            for (let i = 0; i < MAX_SMOKE_PARTICLES; i++) {
+                const el = document.createElement('div');
+                el.classList.add('smoke-particle');
+                const container = (i % 4 === 0) ? smokeContainerFront : smokeContainerBack;
+                container.appendChild(el);
+                smokeParticlePool.push({ el, life: 0 });
+            }
+            for (let i = 0; i < MAX_WIND_LINES; i++) {
+                const el = document.createElement('div');
+                el.classList.add('wind-line');
+                windEffectContainer.appendChild(el);
+                windLinePool.push({ el, life: 0 });
+            }
+        }
+        setupPools();
+
+        function activateSmokeParticle(x, y) {
+            const p = smokeParticlePool[nextSmokeIndex];
+            p.life = Math.random() * 60 + 40;
+            p.initialLife = p.life;
+            p.x = x; p.y = y;
+            p.vx = (Math.random() - 0.5) * 4 + (baseWindStrength * smokeWindFactor) * 5;
+            p.vy = Math.random() * -4 - 2;
+            p.size = Math.random() * 20 + 10;
+            
+            p.el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            p.el.style.width = `${p.size}px`;
+            p.el.style.height = `${p.size}px`;
+
+            nextSmokeIndex = (nextSmokeIndex + 1) % MAX_SMOKE_PARTICLES;
+        }
+
+        function activateWindLine(wheelRect) {
+            const line = windLinePool[nextWindLineIndex];
+            line.life = 100;
+            line.x = wheelRect.left - Math.random() * 50 - 50;
+            line.length = Math.random() * 80 + 50;
+            line.y = wheelRect.top + wheelRect.height / 2 + (Math.random() - 0.5) * wheelRect.height * 0.8;
+            line.y_base = line.y;
+            line.el.style.width = `${line.length}px`;
+
+            nextWindLineIndex = (nextWindLineIndex + 1) % MAX_WIND_LINES;
+        }
+        
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        let rotation = 0, velocity = 0, damping = 0.88;
+        const baseWindStrength = 0.8, MAX_RAW_VELOCITY = 30, wheelSensitivity = 0.0075;
+        const colors = ['rgba(255, 0, 0, 0.7)','rgba(0, 255, 0, 0.7)','rgba(0, 0, 255, 0.7)','rgba(255, 255, 0, 0.7)','rgba(255, 0, 255, 0.7)','rgba(0, 255, 255, 0.7)','rgba(255, 165, 0, 0.7)','rgba(128, 0, 128, 0.7)','rgba(255, 255, 255, 0.7)'];
+        const MAX_SPEED_DISPLAY = 370;
+        let smokeWindFactor = 1.0;
+        let lineWindFactor = 1.0;
+        let totalDistance = 0;
+        let totalCO2 = 0;
+        const CO2_PER_KM = 200;
+        let lastConfettiTrigger = 0;
+
+        function createConfetti() {
+            const particleCount = 225;
+            const confettiColors = [
+                '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#a8e6cf', '#ffd3a5',
+                '#ff7675', '#74b9ff', '#a29bfe', '#fd79a8', '#fdcb6e', '#6c5ce7', '#00b894', '#e17055',
+                '#81ecec', '#fab1a0', '#e84393', '#00cec9', '#55a3ff', '#ff7675', '#fdcb6e', '#6c5ce7',
+                '#a29bfe', '#fd79a8', '#00b894', '#e17055', '#81ecec', '#fab1a0', '#e84393', '#00cec9',
+                '#ff9ff3', '#a8e6cf', '#ffd3a5', '#ff7675', '#74b9ff', '#a29bfe', '#fd79a8', '#fdcb6e',
+                '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#a8e6cf', '#ffd3a5'
+            ];
+            
+            function getRandomConfettiColor() {
+                return confettiColors[Math.floor(Math.random() * confettiColors.length)];
+            }
+            
+            const particles = [];
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            container.style.pointerEvents = 'none';
+            container.style.zIndex = '200';
+            document.body.appendChild(container);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('confetti-particle');
+                
+                const startX = window.innerWidth / 2 + (Math.random() - 0.5) * 100;
+                const startY = window.innerHeight - 100;
+                
+                const explosionAngle = (Math.random() - 0.5) * Math.PI;
+                const explosionForce = Math.random() * 8 + 4;
+                const velocityX = Math.sin(explosionAngle) * explosionForce;
+                const velocityY = -Math.cos(explosionAngle) * explosionForce;
+                
+                const rotationSpeed = (Math.random() - 0.5) * 20;
+                const gravity = 0.075;
+                
+                particle.style.left = `${startX}px`;
+                particle.style.top = `${startY}px`;
+                particle.style.backgroundColor = getRandomConfettiColor();
+                
+                container.appendChild(particle);
+                
+                particles.push({
+                    element: particle,
+                    x: startX,
+                    y: startY,
+                    vx: velocityX,
+                    vy: velocityY,
+                    rotation: 0,
+                    rotationSpeed: rotationSpeed,
+                    gravity: gravity
+                });
+            }
+            
+            function animateAllConfetti() {
+                let activeParticles = 0;
+                
+                particles.forEach(particle => {
+                    if (!particle.element.parentNode) return;
+                    
+                    particle.vy += particle.gravity;
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.rotation += particle.rotationSpeed;
+                    
+                    particle.element.style.left = `${particle.x}px`;
+                    particle.element.style.top = `${particle.y}px`;
+                    particle.element.style.transform = `rotate(${particle.rotation}deg)`;
+                    
+                    if (particle.y > window.innerHeight + 100 || 
+                        particle.x < -100 || 
+                        particle.x > window.innerWidth + 100) {
+                        particle.element.remove();
+                    } else {
+                        activeParticles++;
+                    }
+                });
+                
+                if (activeParticles === 0) {
+                    container.remove();
+                } else {
+                    requestAnimationFrame(animateAllConfetti);
+                }
+            }
+            
+            requestAnimationFrame(animateAllConfetti);
+        }
+
+        window.addEventListener('wheel', (e) => {
+            velocity += e.deltaY * wheelSensitivity;
+            const rect = wheel.getBoundingClientRect();
+            const smokeOriginX = rect.left + rect.width / 2;
+            const smokeOriginY = rect.bottom - 100;
+            const particleCount = Math.min(Math.ceil(Math.abs(velocity) * 3), 15);
+            for (let i = 0; i < particleCount; i++) {
+                activateSmokeParticle(smokeOriginX, smokeOriginY);
+            }
+            if (Math.abs(velocity) > 0.5 && Math.random() < 0.3) {
+                activateWindLine(rect);
+            }
+        });
+
+        const trackCanvas = document.getElementById('track-canvas');
+        const trackCtx = trackCanvas.getContext('2d');
+        let trackMapScale = 1;
+        let currentTrackProgress = 0;
+        const CAR_SIZE = 8;
+        
+        let remainingLaps = 40;
+        let lastTrackProgress = 0;
+        if(lapCounter) {
+            lapCounter.textContent = `Remaining Laps: ${remainingLaps}`;
+        }
+
+        function resizeTrackCanvas() {
+            const container = document.getElementById('track-map-container');
+            trackCanvas.width = container.clientWidth;
+            trackCanvas.height = 230;
+            drawTrack();
+        }
+        window.addEventListener('resize', resizeTrackCanvas);
+        
+
+        const trackPathPoints = [
+            { x: 0.2, y: 0.1 },
+            { x: 0.8, y: 0.1 },
+            { x: 0.9, y: 0.2 },
+            { x: 0.9, y: 0.8 },
+            { x: 0.8, y: 0.9 },
+            { x: 0.2, y: 0.9 },
+            { x: 0.1, y: 0.8 },
+            { x: 0.1, y: 0.2 }
+        ];
+
+        const trackInnerPathPoints = [
+            { x: 0.3, y: 0.2 },
+            { x: 0.7, y: 0.2 },
+            { x: 0.8, y: 0.3 },
+            { x: 0.8, y: 0.7 },
+            { x: 0.7, y: 0.8 },
+            { x: 0.3, y: 0.8 },
+            { x: 0.2, y: 0.7 },
+            { x: 0.2, y: 0.3 }
+        ];
+
+        function drawTrack() {
+            if (!trackCtx) return;
+            trackCtx.clearRect(0, 0, trackCanvas.width, trackCanvas.height);
+
+            trackCtx.fillStyle = 'rgba(100, 100, 100, 0.8)';
+            trackCtx.strokeStyle = 'white';
+            trackCtx.lineWidth = 2;
+
+            trackCtx.beginPath();
+            trackCtx.moveTo(trackPathPoints[0].x * trackCanvas.width, trackPathPoints[0].y * trackCanvas.height);
+            for (let i = 1; i < trackPathPoints.length; i++) {
+                trackCtx.lineTo(trackPathPoints[i].x * trackCanvas.width, trackPathPoints[i].y * trackCanvas.height);
+            }
+            trackCtx.closePath();
+            trackCtx.fill();
+            trackCtx.stroke();
+
+            trackCtx.beginPath();
+            trackCtx.moveTo(trackInnerPathPoints[0].x * trackCanvas.width, trackInnerPathPoints[0].y * trackCanvas.height);
+            for (let i = 1; i < trackInnerPathPoints.length; i++) {
+                trackCtx.lineTo(trackInnerPathPoints[i].x * trackCanvas.width, trackInnerPathPoints[i].y * trackCanvas.height);
+            }
+            trackCtx.closePath();
+            trackCtx.globalCompositeOperation = 'destination-out';
+            trackCtx.fill();
+            trackCtx.globalCompositeOperation = 'source-over';
+
+            trackCtx.beginPath();
+            trackCtx.moveTo(trackInnerPathPoints[0].x * trackCanvas.width, trackInnerPathPoints[0].y * trackCanvas.height);
+            for (let i = 1; i < trackInnerPathPoints.length; i++) {
+                trackCtx.lineTo(trackInnerPathPoints[i].x * trackCanvas.width, trackInnerPathPoints[i].y * trackCanvas.height);
+            }
+            trackCtx.closePath();
+            trackCtx.stroke();
+
+            trackCtx.strokeStyle = 'red';
+            trackCtx.lineWidth = 3;
+            trackCtx.beginPath();
+            const startX = trackPathPoints[0].x * trackCanvas.width;
+            const startY = trackPathPoints[0].y * trackCanvas.height;
+            const innerStartX = trackInnerPathPoints[0].x * trackCanvas.width;
+            const innerStartY = trackInnerPathPoints[0].y * trackCanvas.height;
+            trackCtx.moveTo(startX, startY);
+            trackCtx.lineTo(innerStartX, innerStartY);
+            trackCtx.stroke();
+            trackCtx.lineWidth = 2;
+        }
+
+        function calculateTrackLength(points) {
+            let totalLength = 0;
+            if (trackCanvas.width === 0) return 1;
+
+            for (let i = 0; i < points.length; i++) {
+                const p1 = points[i];
+                const p2 = points[(i + 1) % points.length];
+                totalLength += Math.sqrt(
+                    Math.pow((p2.x - p1.x) * trackCanvas.width, 2) +
+                    Math.pow((p2.y - p1.y) * trackCanvas.height, 2)
+                );
+            }
+            return totalLength;
+        }
+
+        function getCarPosition(progress) {
+            const fullPath = [];
+            for (let i = 0; i < trackPathPoints.length; i++) {
+                const midX = (trackPathPoints[i].x + trackInnerPathPoints[i].x) / 2;
+                const midY = (trackPathPoints[i].y + trackInnerPathPoints[i].y) / 2;
+                fullPath.push({ x: midX, y: midY });
+            }
+
+            if (fullPath.length === 0) return { x: 0, y: 0 };
+            
+            const totalTrackLength = calculateTrackLength(fullPath);
+            if (totalTrackLength === 0) return { x: fullPath[0].x * trackCanvas.width, y: fullPath[0].y * trackCanvas.height };
+
+            let distanceToTarget = progress * totalTrackLength;
+
+            for (let i = 0; i < fullPath.length; i++) {
+                const p1 = fullPath[i];
+                const p2 = fullPath[(i + 1) % fullPath.length];
+                
+                const length = Math.sqrt(
+                    Math.pow((p2.x - p1.x) * trackCanvas.width, 2) +
+                    Math.pow((p2.y - p1.y) * trackCanvas.height, 2)
+                );
+
+                if (length === 0 && distanceToTarget === 0) {
+                    return { x: p1.x * trackCanvas.width, y: p1.y * trackCanvas.height };
+                }
+
+                if (distanceToTarget <= length || length === 0) {
+                    const ratio = (length === 0) ? 0 : (distanceToTarget / length);
+                    const x = p1.x * trackCanvas.width + (p2.x - p1.x) * trackCanvas.width * ratio;
+                    const y = p1.y * trackCanvas.height + (p2.y - p1.y) * trackCanvas.height * ratio;
+                    return { x, y };
+                }
+                distanceToTarget -= length;
+            }
+            
+            return { x: fullPath[0].x * trackCanvas.width, y: fullPath[0].y * trackCanvas.height };
+        }
+
+        function drawCar() {
+            if (!trackCtx) return;
+            const carPos = getCarPosition(currentTrackProgress);
+            trackCtx.beginPath();
+            trackCtx.arc(carPos.x, carPos.y, CAR_SIZE, 0, Math.PI * 2);
+            trackCtx.fillStyle = 'red';
+            trackCtx.fill();
+        }
+
+        resizeTrackCanvas(); 
+
+        function animate() {
+            rotation += velocity;
+            velocity *= damping;
+            if (Math.abs(velocity) < 0.01) velocity = 0;
+            let currentSpeed = (Math.abs(velocity) / MAX_RAW_VELOCITY) * MAX_SPEED_DISPLAY;
+            currentSpeed = Math.min(currentSpeed, MAX_SPEED_DISPLAY);
+            speedDisplay.textContent = `${Math.round(currentSpeed)} km/h`;
+            wheel.style.transform = `rotate(${rotation}deg)`;
+
+            const distanceThisFrame = (currentSpeed / 3600) * (1/60);
+            totalDistance += distanceThisFrame;
+            totalCO2 = totalDistance * CO2_PER_KM;
+            if (co2Display) {
+                co2Display.textContent = `${Math.round(totalCO2)}g`;
+            }
+
+            const currentConfettiTrigger = Math.floor(totalCO2 / 50);
+            if (currentConfettiTrigger > lastConfettiTrigger) {
+                lastConfettiTrigger = currentConfettiTrigger;
+                createConfetti();
+            }
+
+            const opacity = currentSpeed / MAX_SPEED_DISPLAY;
+            backgroundImage.style.opacity = opacity;
+
+            if (currentSpeed === 0) {
+                if (!hasSwappedAtZero) {
+                    nextImage();
+                    hasSwappedAtZero = true;
+                }
+            } else {
+                hasSwappedAtZero = false;
+            }
+
+            smokeParticlePool.forEach(p => {
+                if (p.life <= 0) return;
+                p.life--;
+                if (p.life <= 0) { p.el.style.transform = 'scale(0)'; return; }
+                p.x += p.vx; p.y += p.vy; p.vy += 0.02; p.vx += (baseWindStrength * smokeWindFactor) * 0.1;
+                const lifeRatio = p.life / p.initialLife;
+                const scale = lifeRatio * 1.5;
+                p.el.style.opacity = lifeRatio;
+                p.el.style.transform = `translate(${p.x - p.size / 2}px, ${p.y - p.size / 2}px) scale(${scale})`;
+            });
+            
+            windLinePool.forEach(line => {
+                if (line.life <= 0) return;
+                line.life--;
+                if (line.life <= 0) { line.el.style.opacity = 0; return; }
+                line.x += ((Math.abs(velocity) * 2) + 5) * lineWindFactor;
+                const wheelRect = wheel.getBoundingClientRect();
+                const wheelCenterY = wheelRect.top + wheelRect.height / 2;
+                const lineRelativeY = line.y_base - wheelCenterY;
+                const lineRelativeX = line.x - (wheelRect.left + wheelRect.width / 2);
+                let yOffset = 0;
+                if (Math.abs(lineRelativeX) < wheelRect.width * 0.7) {
+                    const normalizedX = lineRelativeX / (wheelRect.width * 0.7);
+                    yOffset = Math.sin((normalizedX + 1) * Math.PI) * lineRelativeY * 0.2 * lineWindFactor;
+                }
+                const currentY = line.y_base + yOffset;
+                line.el.style.opacity = line.life / 100;
+                line.el.style.transform = `translate(${line.x}px, ${currentY}px)`;
+            });
+
+            const trackMoveFactor = 0.0001;
+            currentTrackProgress = (currentTrackProgress + (Math.abs(velocity) * trackMoveFactor)) % 1;
+            
+            if (remainingLaps > 0 && currentTrackProgress < lastTrackProgress) {
+                remainingLaps--;
+                if(lapCounter) {
+                    lapCounter.textContent = `Remaining Laps: ${remainingLaps}`;
+                }
+            }
+            lastTrackProgress = currentTrackProgress;
+
+            if (trackCanvas.width > 0 && trackCanvas.height > 0) {
+                drawTrack();
+                drawCar();
+            }
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        if (smokeWindSlider) {
+            smokeWindSlider.addEventListener('input', (e) => {
+                const v = Number(e.target.value) || 0;
+                smokeWindFactor = Math.max(-1, Math.min(1, v / 100));
+            });
+        }
+        if (lineWindSlider) {
+            lineWindSlider.addEventListener('input', (e) => {
+                const v = Number(e.target.value) || 0;
+                lineWindFactor = Math.max(-1, Math.min(1, v / 100));
+            });
+        }
+
+        if (wheelSelector) {
+            wheelSelector.addEventListener('click', (e) => {
+                const target = e.target && e.target.closest('img[data-wheel-src]');
+                if (!target) return;
+                const newSrc = target.getAttribute('data-wheel-src');
+                if (!newSrc) return;
+                wheel.src = newSrc;
+            });
+        }
+    });
+</script>
+
+</body>
+</html>
